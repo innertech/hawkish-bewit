@@ -1,8 +1,8 @@
 package tech.inner.hawk.bewit
 
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
+import kotlin.time.Clock
 import kotlin.time.Duration
+import kotlin.time.Instant
 
 /**
  * A test clock, generally used for testing and prototyping.

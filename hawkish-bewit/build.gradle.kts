@@ -2,7 +2,7 @@ plugins {
   kotlin("multiplatform")
   id("com.android.library")
   id("org.jetbrains.dokka")
-  id("com.adarshr.test-logger") version "3.1.0"
+  id("com.adarshr.test-logger") version "4.0.0"
   id("signing")
   id("maven-publish")
 }
@@ -10,74 +10,73 @@ plugins {
 group = LibraryConstants.group
 version = LibraryConstants.versionName
 
+val signingRequired: String by project
+
 repositories {
   mavenCentral()
   maven("https://repo.repsy.io/mvn/chrynan/public")
 }
 
 kotlin {
-  jvmToolchain(17)
+  jvmToolchain(21)
 
-  android {
-    publishAllLibraryVariants()
+  androidTarget {
+    publishLibraryVariants("release")
   }
 
-  targets {
-    android {
-      compilations.all {
-        kotlinOptions.jvmTarget = JavaVersion.VERSION_1_8.toString()
-      }
-    }
-    jvm {
-      compilations.all {
-        kotlinOptions.jvmTarget = JavaVersion.VERSION_17.toString()
-      }
-      testRuns["test"].executionTask.configure {
-        useJUnitPlatform()
-      }
-    }
-    js(BOTH) {
-      browser {
-        testTask {
-          // failing tests on JS for now
-          enabled = false
-          useKarma {
-            useChromeHeadless()
-          }
+  jvm {
+    compilations.all {
+      compileTaskProvider.configure {
+        compilerOptions {
+          jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_1_8)
         }
       }
-//      nodejs()
     }
-    ios()
-    iosSimulatorArm64()
+    testRuns["test"].executionTask.configure {
+      useJUnitPlatform()
+    }
   }
+
+  js {
+    browser {
+      testTask {
+        // failing tests on JS for now
+        enabled = false
+        useKarma {
+          useChromeHeadless()
+        }
+      }
+    }
+//      nodejs()
+  }
+  iosX64()
+  iosArm64()
+  iosSimulatorArm64()
 
   sourceSets {
     all {
       languageSettings {
-        languageVersion = "1.7"
+        languageVersion = "2.2"
+        apiVersion = "2.1"
         progressiveMode = true
 //        optIn("kotlin.contracts.ExperimentalContracts")
-//        optIn("kotlin.time.ExperimentalTime")
-//        optIn("kotlinx.coroutines.ExperimentalCoroutinesApi")
-//        optIn("kotlinx.serialization.ExperimentalSerializationApi")
+        optIn("kotlin.time.ExperimentalTime")
       }
     }
     val commonMain by getting {
       dependencies {
         api("com.chrynan.uri:uri-core:0.4.0")
-        api("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")
+        api("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")
 
         implementation(kotlin("stdlib-jdk8"))
 
-        implementation("com.squareup.okio:okio:3.2.0")
-        implementation("io.matthewnelson.kotlin-components:encoding-base64:1.1.3")
+        implementation("com.squareup.okio:okio:3.16.2")
       }
     }
 
     val jsMain by getting {
       dependencies {
-        implementation("com.squareup.okio:okio-nodefilesystem:3.2.0")
+        implementation("com.squareup.okio:okio-nodefilesystem:3.16.2")
       }
     }
 
@@ -89,12 +88,11 @@ kotlin {
       }
     }
 
-    val jvmMain by sourceSets.getting
     val jvmTest by getting {
       dependencies {
         api("org.junit.jupiter:junit-jupiter-api:5.8.2")
-        implementation("com.mercateo:test-clock:1.0.2")
-        implementation("io.strikt:strikt-core:0.33.0")
+        implementation("com.mercateo:test-clock:1.0.4")
+        implementation("io.strikt:strikt-core:0.35.1")
         runtimeOnly("org.junit.jupiter:junit-jupiter-engine:5.8.2")
       }
     }
@@ -102,23 +100,18 @@ kotlin {
     val commonTest by getting {
       dependencies {
         implementation(kotlin("test"))
-        implementation("com.squareup.okio:okio-fakefilesystem:3.2.0")
+        implementation("com.squareup.okio:okio-fakefilesystem:3.16.2")
       }
     }
-
-    val iosMain by sourceSets.getting
-    val iosSimulatorArm64Main by sourceSets.getting
-    iosSimulatorArm64Main.dependsOn(iosMain)
   }
 }
 
 android {
   namespace = "tech.inner.hawk.bewit"
-  compileSdk = LibraryConstants.Android.compileSdkVersion
+  compileSdk = 36
 
   defaultConfig {
-    minSdk = LibraryConstants.Android.minSdkVersion
-    targetSdk = LibraryConstants.Android.targetSdkVersion
+    minSdk = 23
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
 
@@ -142,12 +135,8 @@ android {
   }
 
   tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
-    kotlinOptions {
-      jvmTarget = JavaVersion.VERSION_1_8.toString()
-      // Opt-in to experimental compose APIs
-      freeCompilerArgs = listOf(
-        "-opt-in=kotlin.RequiresOptIn"
-      )
+    compilerOptions {
+      jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_1_8)
     }
   }
 
@@ -169,13 +158,19 @@ val javadocJar: TaskProvider<Jar> by tasks.registering(Jar::class) {
 //  from(dokkaHtml.outputDirectory)
 }
 
+tasks.withType<PublishToMavenRepository>().configureEach {
+  if (signingRequired.toBoolean()) {
+    mustRunAfter(tasks.withType<Sign>())
+  }
+}
+
 publishing {
   publications.withType<MavenPublication> {
     artifact(javadocJar.get())
     pom {
       name.set(project.name)
       description.set("Signed URLs using Hawk Bewits")
-      url.set("https://github.com/innertech/hawk-bewit")
+      url.set("https://github.com/innertech/hawkish-bewit")
       licenses {
         license {
           name.set("The Apache License, Version 2.0")
@@ -190,23 +185,22 @@ publishing {
         }
       }
       scm {
-        connection.set("scm:git:git@github.com:rocketraman/bootable.git")
-        developerConnection.set("scm:git:ssh://github.com:rocketraman/bootable.git")
-        url.set("https://github.com/innertech/hawk-bewit")
+        connection.set("scm:git:git@github.com:innertech/hawkish-bewit.git")
+        developerConnection.set("scm:git:ssh://github.com:innertech/hawkish-bewit.git")
+        url.set("https://github.com/innertech/hawkish-bewit")
       }
     }
   }
   repositories {
     maven {
+      // https://central.sonatype.org/publish/publish-portal-ossrh-staging-api/#getting-started-for-maven-api-like-plugins
       name = "sonatype"
-      url = uri("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2")
+      url = uri("https://ossrh-staging-api.central.sonatype.com/service/local/staging/deploy/maven2")
       credentials {
         username = project.findProperty("sonatypeUser") as? String
         password = project.findProperty("sonatypePassword") as? String
       }
     }
-  }
-  repositories {
     maven {
       name = "GitHub"
       url = uri("https://maven.pkg.github.com/innertech/hawkish-bewit")
@@ -218,31 +212,9 @@ publishing {
   }
 }
 
-signing {
-  useGpgCmd()
-  sign(publishing.publications)
-}
-
-/*
-tasks.withType<Test> {
-  outputs.upToDateWhen { false }
-}
-*/
-
-// https://stackoverflow.com/a/58624464/430128
-val iosTest: Task by tasks.creating {
-  val device = project.findProperty("iosDevice")?.toString() ?: "iPhone 8"
-  val testExecutable = kotlin.targets.getByName<org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget>("iosX64").binaries.getTest("DEBUG")
-  dependsOn(testExecutable.linkTaskName)
-  group = JavaBasePlugin.VERIFICATION_GROUP
-  description = "Runs tests for target 'ios' on an iOS simulator"
-
-  doLast {
-    exec {
-      println(testExecutable.outputFile.absolutePath)
-      commandLine( "xcrun", "simctl", "spawn", "--standalone", device, testExecutable.outputFile.absolutePath)
-    }
+if (signingRequired.toBoolean()) {
+  signing {
+    useGpgCmd()
+    sign(publishing.publications)
   }
 }
-
-tasks.getByName("allTests").dependsOn(iosTest)

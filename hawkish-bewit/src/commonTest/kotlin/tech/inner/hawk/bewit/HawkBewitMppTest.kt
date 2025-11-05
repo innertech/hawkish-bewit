@@ -2,11 +2,11 @@ package tech.inner.hawk.bewit
 
 import com.chrynan.uri.core.Uri
 import com.chrynan.uri.core.fromString
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Instant
 
 class HawkBewitMppTest {
   private val creds1 = HawkCredentials(
@@ -38,7 +38,7 @@ class HawkBewitMppTest {
   fun validBewitIsGoodAndHasCorrectExpiry() {
     with(HawkBewit(testClock)) {
       val ttl = 10.minutes
-      val bewit = generate(creds1, uri1, ttl)
+      val bewit = generate(creds1, uri1, testClock.now() + ttl)
       assertEquals(validate(creds1, uri1, bewit), BewitValidationResult.Good((clockSeed + ttl)))
     }
   }
@@ -47,7 +47,7 @@ class HawkBewitMppTest {
   fun expiredBewitRaisesExpiredResult() {
     with(HawkBewit(testClock)) {
       val ttl = 1.minutes
-      val bewit = generate(creds1, uri1, ttl)
+      val bewit = generate(creds1, uri1, testClock.now() + ttl)
       testClock.fastForward(2.minutes)
       assertEquals(validate(creds1, uri1, bewit), BewitValidationResult.Expired((clockSeed + ttl)))
     }
@@ -57,7 +57,7 @@ class HawkBewitMppTest {
   fun authenticationFailsOnEnvelopeExpiryChange() {
     with(HawkBewit(testClock)) {
       val ttl = 1.minutes
-      val bewit = generate(creds1, uri1, ttl)
+      val bewit = generate(creds1, uri1, testClock.now() + ttl)
       testClock.fastForward(2.minutes)
 
       // update to non-expired manually, but only in envelope
@@ -84,7 +84,7 @@ class HawkBewitMppTest {
   fun authenticationFailsUriMismatch() {
     with(HawkBewit(testClock)) {
       val ttl = 1.minutes
-      val bewit = generate(creds1, uri1, ttl)
+      val bewit = generate(creds1, uri1, testClock.now() + ttl)
       assertEquals(
         validate(creds1, uri2, bewit),
         BewitValidationResult.AuthenticationError("MAC mismatch")
@@ -96,7 +96,7 @@ class HawkBewitMppTest {
   fun authenticationFailsKeyIdMismatch() {
     with(HawkBewit(testClock)) {
       val ttl = 1.minutes
-      val bewit = generate(creds1, uri1, ttl)
+      val bewit = generate(creds1, uri1, testClock.now() + ttl)
       assertEquals(
         validate(creds1.copy(keyId = "abc"), uri1, bewit),
         BewitValidationResult.Bad("Key id mismatch")
@@ -108,7 +108,7 @@ class HawkBewitMppTest {
   fun authenticationFailsCredentialsMismatch() {
     with(HawkBewit(testClock)) {
       val ttl = 1.minutes
-      val bewit = generate(creds1, uri1, ttl)
+      val bewit = generate(creds1, uri1, testClock.now() + ttl)
       assertEquals(
         validate(creds2, uri1, bewit),
         BewitValidationResult.Bad("Key id mismatch")
@@ -120,7 +120,7 @@ class HawkBewitMppTest {
   fun authenticationFailsNoCredentialsForKeyId() {
     with(HawkBewit(testClock)) {
       val ttl = 1.minutes
-      val bewit = generate(creds1, uri1, ttl)
+      val bewit = generate(creds1, uri1, testClock.now() + ttl)
       assertEquals(
         validate(uri1, bewit) { null },
         BewitValidationResult.Bad("No credentials for key id 9aA4bFc9df")
@@ -132,7 +132,7 @@ class HawkBewitMppTest {
   fun authenticationSucceedsCredentialsLookupByKeyId() {
     with(HawkBewit(testClock)) {
       val ttl = 1.minutes
-      val bewit = generate(creds1, uri1, ttl)
+      val bewit = generate(creds1, uri1, testClock.now() + ttl)
       assertEquals(
         validate(uri1, bewit) { k -> if (k == creds1.keyId) creds1 else null },
         BewitValidationResult.Good((clockSeed + ttl))
@@ -144,7 +144,7 @@ class HawkBewitMppTest {
   fun authenticationFailsMissingComponents() {
     with(HawkBewit(testClock)) {
       val ttl = 1.minutes
-      val bewit = generate(creds1, uri1, ttl)
+      val bewit = generate(creds1, uri1, testClock.now() + ttl)
       val bewitNoKey = bewit.base64UrlToBytes()!!.decodeToString()
         .split("\\")
         .drop(1)
@@ -163,7 +163,7 @@ class HawkBewitMppTest {
   fun authenticationFailsMissingMac() {
     with(HawkBewit(testClock)) {
       val ttl = 1.minutes
-      val bewit = generate(creds1, uri1, ttl)
+      val bewit = generate(creds1, uri1, testClock.now() + ttl)
       val bewitNoMac = bewit.base64UrlToBytes()!!.decodeToString()
         .split("\\")
         .dropLast(2)
@@ -184,7 +184,7 @@ class HawkBewitMppTest {
   fun authenticationFailsPathHostPortMismatch() {
     with(HawkBewit(testClock)) {
       val ttl = 1.minutes
-      val bewit = generate(creds1, uri1, ttl)
+      val bewit = generate(creds1, uri1, testClock.now() + ttl)
 
       assertEquals(
         validate(creds1, uri1DiffPath, bewit),
@@ -205,7 +205,7 @@ class HawkBewitMppTest {
   fun authenticationFailsDefaultPortMismatch() {
     with(HawkBewit(testClock)) {
       val ttl = 1.minutes
-      val bewit = generate(creds1, uri3DefaultPort, ttl)
+      val bewit = generate(creds1, uri3DefaultPort, testClock.now() + ttl)
 
       assertEquals(
         validate(creds1, uri3SetPort, bewit),
@@ -218,7 +218,7 @@ class HawkBewitMppTest {
   fun authenticationFailsSchemeMismatch() {
     with(HawkBewit(testClock)) {
       val ttl = 1.minutes
-      val bewit = generate(creds1, uri1, ttl)
+      val bewit = generate(creds1, uri1, testClock.now() + ttl)
 
       assertEquals(
         validate(creds1, uri1DiffScheme, bewit),
@@ -231,7 +231,7 @@ class HawkBewitMppTest {
   fun authenticationFailsQueryParamsMismatch() {
     with(HawkBewit(testClock)) {
       val ttl = 1.minutes
-      val bewit = generate(creds1, uri2, ttl)
+      val bewit = generate(creds1, uri2, testClock.now() + ttl)
 
       assertEquals(
         validate(creds1, uri2DiffQuery, bewit),

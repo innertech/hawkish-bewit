@@ -2,10 +2,9 @@ package tech.inner.hawk.bewit
 
 import com.chrynan.uri.core.Uri
 import com.chrynan.uri.core.fromString
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
 import okio.Buffer
-import kotlin.time.Duration
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 sealed class BewitValidationResult {
   data class Bad(val message: String): BewitValidationResult()
@@ -55,11 +54,8 @@ class HawkBewit(private val clock: Clock = Clock.System) {
   fun generate(
     credentials: HawkCredentials,
     uri: Uri,
-    ttl: Duration,
+    expiry: Instant,
   ): String {
-    require(!ttl.isNegative()) { "TTL must be a positive duration" }
-
-    val expiry = clock.now() + ttl
     val macBase64 = calculateMac(
       credentials,
       expiry,
