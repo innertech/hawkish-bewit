@@ -1,7 +1,7 @@
 # Hawk(ish) Bewit — Signed Links
 
 image:https://img.shields.io/github/v/tag/innertech/hawkish-bewit[GitHub tag (latest by date),link="https://github.com/innertech/hawkish-bewit/releases"]
-image:https://img.shields.io/badge/kotlin-1.7.20-blue.svg?logo=kotlin[Kotlin,link="http://kotlinlang.org"]
+image:https://img.shields.io/badge/kotlin-2.2.21-blue.svg?logo=kotlin[Kotlin,link="http://kotlinlang.org"]
 image:https://img.shields.io/maven-central/v/tech.inner/hawkish-bewit[Maven Central,link="https://search.maven.org/search?q=g:tech.inner+a:hawkish-bewit"]
 image:https://img.shields.io/github/license/innertech/hawkish-bewit["GitHub license",link="https://github.com/innertech/hawkish-bewit/blob/master/LICENSE"]
 
